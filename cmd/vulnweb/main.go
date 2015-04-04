@@ -14,11 +14,13 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/russross/blackfriday"
 	"github.com/vulndb/webui"
+	"github.com/vulndb/webui/bindata"
 )
 
 var vulndbPath = flag.String("vulndb-path", "../data/db", "path to vulndb database")
 var address = flag.String("http-addr", "127.0.0.1:8080", "http address")
 var templates = flag.String("templates", "./templates", "path to templates")
+var loadTemplates = flag.Bool("load-templates", false, "load templates from filesystem")
 
 var funcMap = template.FuncMap{
 	"severity": func(value string) string {
@@ -49,11 +51,28 @@ func tPath(name string) string {
 }
 
 func renderTemplate(w http.ResponseWriter, tmplName string, obj *TemplateObj) {
-	t, err := template.New(tmplName).Funcs(funcMap).ParseFiles(tPath(tmplName), tPath("base"))
+	var err error
+	t := template.New(tmplName).Funcs(funcMap)
+	if *loadTemplates {
+		t, err = t.ParseFiles(tPath(tmplName), tPath("base"))
+	} else {
+		var data []byte
+		data, err = bindata.Asset(tPath(tmplName))
+		if err == nil {
+			t, err = t.Parse(string(data))
+			if err == nil {
+				data, err = bindata.Asset(tPath("base"))
+				if err == nil {
+					t, err = t.Parse(string(data))
+				}
+			}
+		}
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	buf := bytes.NewBuffer(nil)
 	err = t.ExecuteTemplate(buf, "base", obj)
 	if err != nil {
