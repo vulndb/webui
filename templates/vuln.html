@@ -1,0 +1,63 @@
+
+{{ define "content" }}
+
+{{ if .Err }}
+<h3 class="text-danger">Error ocured: {{ .Err }}</h3>
+{{ else }}
+
+
+
+<div class="row">
+    <div class="col-md-12">
+        <a href="/severity/{{ .Vuln.Severity }}"><span class="label label-{{ severity .Vuln.Severity }}">{{ .Vuln.Severity }}</span></a>
+        {{ if .Vuln.Tags }}
+        {{ range .Vuln.Tags }}
+        <a href="/tag/{{ . }}"><span class="label label-primary">{{ . }}</span></a>
+
+        {{ end }}
+        {{ end }}
+    </div>
+</div>
+
+<h2>{{ .Vuln.Title }} <small>#{{ .Vuln.Id }}</small></h2>
+
+{{ if .Vuln.Description }}
+<div class="row">
+    <div class="col-md-8"><h3>Description</h3></div>
+</div>
+<div class="row">
+    <div class="col-md-8 text-justify">{{ markdown .Vuln.Description }}</div>
+</div>
+{{ end }}
+
+{{ if .Vuln.Fix }}
+<div class="row">
+    <div class="col-md-8"><h3>Fix guidance <small>({{ .Vuln.Fix.Effort }} minutes)</small></h3></div>
+</div>
+<div class="row">
+    <div class="col-md-8 text-justify">{{ markdown .Vuln.Fix.Guidance }}</div>
+</div>
+{{ end }}
+
+<div class="row">
+    <div class="col-md-8"><h3>References</h3></div>
+</div>
+{{ if .Vuln.Cwe }}
+{{ range .Vuln.Cwe }}
+<div class="row">
+    <div class="col-md-8"><a href="http://cwe.mitre.org/data/definitions/{{ . }}.html">CWE-{{ . }}</a> </div>
+</div>
+{{ end }}
+{{ end }}
+
+{{ if .Vuln.References }}
+{{ range .Vuln.References }}
+<div class="row">
+    <div class="col-md-8"><a href="{{ .Url }}">{{ .Title }}</a> </div>
+</div>
+{{ end }}
+{{ end }}
+
+{{ end }}
+
+{{ end }}
