@@ -13,11 +13,12 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/russross/blackfriday"
-	"github.com/vulndb/webui"
 	"github.com/vulndb/webui/bindata"
+	vulndbBindata "github.com/vulndb/vulndb-go/bindata"
+	vulndb "github.com/vulndb/vulndb-go"
 )
 
-var vulndbPath = flag.String("vulndb-path", "../data/db", "path to vulndb database")
+var vulndbPath = flag.String("vulndb-path", "", "path to vulndb database, if isn't set, then load from vulndb bindata")
 var address = flag.String("http-addr", "127.0.0.1:8080", "http address")
 var templates = flag.String("templates", "./templates", "path to templates")
 var loadTemplates = flag.Bool("load-templates", false, "load templates from filesystem")
@@ -40,14 +41,21 @@ var funcMap = template.FuncMap{
 }
 
 type TemplateObj struct {
-	Vulns webui.VulnList
-	Vuln  *webui.Vuln
+	Vulns vulndb.VulnList
+	Vuln  *vulndb.Vuln
 	Title string
 	Err   error
 }
 
 func tPath(name string) string {
 	return path.Join(*templates, name+".html")
+}
+
+func getVulns() (vulndb.VulnList, error) {
+	if *vulndbPath != "" {
+		return vulndb.LoadFromDir(*vulndbPath)
+	}
+	return vulndbBindata.LoadFromBin()
 }
 
 func renderTemplate(w http.ResponseWriter, tmplName string, obj *TemplateObj) {
@@ -83,7 +91,7 @@ func renderTemplate(w http.ResponseWriter, tmplName string, obj *TemplateObj) {
 }
 
 func IndexHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	vulns, err := webui.GetVulns(*vulndbPath)
+	vulns, err := getVulns()
 	renderTemplate(w, "vulns", &TemplateObj{Err: err, Vulns: vulns})
 }
 
@@ -94,13 +102,13 @@ func VulnHandler(w http.ResponseWriter, req *http.Request, p httprouter.Params) 
 		renderTemplate(w, "vuln", &TemplateObj{Err: err})
 		return
 	}
-	vulns, err := webui.GetVulns(*vulndbPath)
+	vulns, err := getVulns()
 	renderTemplate(w, "vuln", &TemplateObj{Err: err, Vuln: vulns.GetById(id)})
 }
 
 func VulnTagHandler(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	tag := p.ByName("tag")
-	vulns, err := webui.GetVulns(*vulndbPath)
+	vulns, err := getVulns()
 	renderTemplate(w, "vulns", &TemplateObj{
 		Err:   err,
 		Vulns: vulns.FilterByTag(tag),
@@ -110,7 +118,7 @@ func VulnTagHandler(w http.ResponseWriter, req *http.Request, p httprouter.Param
 
 func VulnSeverityHandler(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	severity := p.ByName("severity")
-	vulns, err := webui.GetVulns(*vulndbPath)
+	vulns, err := getVulns()
 	renderTemplate(w, "vulns", &TemplateObj{
 		Err:   err,
 		Vulns: vulns.FilterBySeverity(severity),
